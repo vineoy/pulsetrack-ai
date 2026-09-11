@@ -1,0 +1,52 @@
+name: pulsetrack-ai
+
+services:
+  # --- PostgreSQL 16 : our source of truth (teams, monitors, checks...) ---
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: pulse
+      POSTGRES_PASSWORD: pulse
+      POSTGRES_DB: pulsetrack
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pulse -d pulsetrack"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # --- Redis 7 : queue + cache + locks + pub/sub (added to code in later phases) ---
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # --- FastAPI : the HTTP API. Hot-reloads when we edit backend/ files ---
+  api:
+    build: ./backend
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    environment:
+      APP_NAME: PulseTrack AI
+      ENVIRONMENT: local
+      DATABASE_URL: postgresql+asyncpg://pulse:pulse@db:5432/pulsetrack
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  pgdata:

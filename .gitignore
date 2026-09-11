@@ -1,0 +1,25 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# --- Environment / secrets (never commit real values) ---
+.env
+.env.*
+!.env.example
+
+# --- Node (frontend, added in Phase 2) ---
+node_modules/
+dist/
+
+# --- Editors / OS ---
+.DS_Store
+Thumbs.db
+*.log

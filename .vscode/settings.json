@@ -1,0 +1,14 @@
+{
+  "python.defaultInterpreterPath": "backend/.venv/Scripts/python.exe",
+  "python.analysis.typeCheckingMode": "basic",
+  "editor.formatOnSave": true,
+  "[python]": {
+    "editor.defaultFormatter": "charliermarsh.ruff",
+    "editor.codeActionsOnSave": {
+      "source.organizeImports.ruff": "explicit"
+    }
+  },
+  "files.watcherExclude": {
+    "**/.venv/**": true
+  }
+}
