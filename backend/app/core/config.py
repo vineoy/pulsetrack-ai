@@ -16,11 +16,12 @@ class Settings(BaseSettings):
     api_v1_prefix: str = "/api/v1"
     debug: bool = True
 
-    database_url: str = "postgresql+asyncpg://pulse:pulse@localhost:5432/pulsetrack"
+    # Port 5433 on the host: a local PostgreSQL service already owns 5432 on this machine.
+    database_url: str = "postgresql+asyncpg://pulse:pulse@localhost:5433/pulsetrack"
     redis_url: str = "redis://localhost:6379/0"
 
     # Declared now so .env.example matches config; used from Phase 1 onwards.
-    jwt_secret: str = "dev-only-change-me"
+    jwt_secret: str = "dev-only-change-me-0123456789abcdef-0123456789abcdef"
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 15
     refresh_token_expire_days: int = 7

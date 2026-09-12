@@ -2,16 +2,15 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
-from redis import asyncio as aioredis
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import create_async_engine
 
+from app.api.v1 import api_router
 from app.core.config import get_settings
+from app.core.db import engine
+from app.core.exceptions import register_exception_handlers
+from app.core.redis import redis_client
 
 settings = get_settings()
-
-engine = create_async_engine(settings.database_url, pool_pre_ping=True)
-redis_client = aioredis.from_url(settings.redis_url, decode_responses=True)
 
 
 @asynccontextmanager
@@ -23,10 +22,12 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title=settings.app_name,
-    version="0.1.0",
+    version="0.2.0",
     description="Multi-tenant uptime monitoring SaaS with an AI incident analyst.",
     lifespan=lifespan,
 )
+register_exception_handlers(app)
+app.include_router(api_router)
 
 
 @app.get("/")

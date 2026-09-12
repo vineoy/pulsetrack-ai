@@ -2,6 +2,8 @@ name: pulsetrack-ai
 
 services:
   # --- PostgreSQL 16 : our source of truth (teams, monitors, checks...) ---
+  # Host port 5433 (NOT 5432): this machine already runs a local PostgreSQL
+  # service that owns 5432, which silently broke host-side connections.
   db:
     image: postgres:16-alpine
     environment:
@@ -9,7 +11,7 @@ services:
       POSTGRES_PASSWORD: pulse
       POSTGRES_DB: pulsetrack
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -42,6 +44,8 @@ services:
       ENVIRONMENT: local
       DATABASE_URL: postgresql+asyncpg://pulse:pulse@db:5432/pulsetrack
       REDIS_URL: redis://redis:6379/0
+      # Dev-only value baked into compose; production gets a real secret from Render env vars.
+      JWT_SECRET: dev-local-9f4c1e7a2b8d5360-change-me-in-prod
     depends_on:
       db:
         condition: service_healthy
