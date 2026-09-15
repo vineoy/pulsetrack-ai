@@ -52,5 +52,23 @@ services:
       redis:
         condition: service_healthy
 
+  # --- ARQ worker : pings websites, creates/resolves incidents. Same image as api ---
+  worker:
+    build: ./backend
+    command: arq app.workers.settings.WorkerSettings
+    volumes:
+      - ./backend:/app
+    environment:
+      APP_NAME: PulseTrack AI
+      ENVIRONMENT: local
+      DATABASE_URL: postgresql+asyncpg://pulse:pulse@db:5432/pulsetrack
+      REDIS_URL: redis://redis:6379/0
+      JWT_SECRET: dev-local-9f4c1e7a2b8d5360-change-me-in-prod
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
 volumes:
   pgdata:

@@ -85,7 +85,13 @@ async def main() -> None:
         )
         db.add(owner)
         for spec in DEMO_MONITORS:
-            monitor = Monitor(team_id=team.id, **spec)
+            monitor = Monitor(
+                team_id=team.id,
+                **spec,
+                # scheduler picks monitors WHERE next_check_at <= now; NULL never
+                # matches, so seeded monitors must be scheduled immediately too
+                next_check_at=datetime.now(UTC),
+            )
             db.add(monitor)
             await db.flush()
             for check in _fake_checks(monitor.id):
