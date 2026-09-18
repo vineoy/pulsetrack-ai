@@ -89,6 +89,35 @@ async def list_checks(
     return ApiResponse(data=check_page)
 
 
+@router.get("/{monitor_id}/checks/export")
+async def export_checks(
+    user: MemberUser,
+    monitor_id: uuid.UUID,
+    db: DBDep,
+    time_from: Annotated[datetime | None, Query(alias="from")] = None,
+    time_to: Annotated[datetime | None, Query(alias="to")] = None,
+):
+    """Download checks as CSV (Phase 8). Streamed, team-scoped, 50k-row cap."""
+    from fastapi.responses import StreamingResponse
+
+    from app.repositories import monitor_repository
+    from app.services import export_service
+
+    monitor = await monitor_repository.get_by_id(db, monitor_id)
+    if monitor is None or monitor.team_id != user.team_id:
+        from fastapi import status as http_status
+
+        from app.core.exceptions import AppError
+
+        raise AppError(http_status.HTTP_404_NOT_FOUND, "NOT_FOUND", "Monitor not found")
+    short_id = str(monitor.id)[:8]
+    return StreamingResponse(
+        export_service.stream_checks_csv(db, monitor.id, time_from, time_to),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename=pulsetrack-checks-{short_id}.csv"},
+    )
+
+
 @router.get("/{monitor_id}/stats", response_model=ApiResponse[StatsOut])
 async def get_stats(
     user: MemberUser,

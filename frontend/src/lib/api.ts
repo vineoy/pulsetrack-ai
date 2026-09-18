@@ -98,3 +98,16 @@ export function errorMessage(err: unknown): string {
   }
   return err instanceof Error ? err.message : String(err);
 }
+
+/** Download a CSV endpoint as a file (Phase 8). Skips the JSON unwrap helper. */
+export async function downloadCsv(url: string, filename: string): Promise<void> {
+  const res = await api.get(url, { responseType: "blob" });
+  const blob = new Blob([res.data], { type: "text/csv" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+}

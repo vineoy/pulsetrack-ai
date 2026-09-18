@@ -22,6 +22,7 @@ dependencies = [
 dev = [
     "pytest>=8.3.0",
     "pytest-asyncio>=0.24.0",
+    "pytest-cov>=7.1.0",
     "ruff>=0.6.0",
 ]
 
@@ -36,6 +37,18 @@ packages = ["app"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
+
+[tool.coverage.run]
+# SQLAlchemy asyncio runs DB I/O in greenlets: without this, lines reached
+# through awaited DB calls are invisible to the tracer (Windows quirk found in
+# Phase 8: probe proved tests execute the file, coverage showed 0%).
+concurrency = ["thread", "greenlet"]
+source = ["app"]
+omit = ["*/migrations/*"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
 
 [tool.ruff]
 line-length = 100
