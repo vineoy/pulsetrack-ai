@@ -938,3 +938,14 @@ green-gated pushes, one-command Northflank deploy. No product features.
 - `README.md`: CI + python + docker badges, Phase 9 header, Gemini model name corrected
   (2.0-flash → 3.5-flash-lite), deploy paragraph links DEPLOY.md + ci.yml.
 - This diary: 9.0 → 9.5 entries. Frontend needs no Docker (Vercel builds from git).
+
+### 9.6 — CI red → green: dummy tokens for the test env (DONE 2026-09-18)
+- First CI run: frontend ✅ 15s, backend ❌ 14 failed / 98 passed. Every failure was
+  `TELEGRAM_BOT_TOKEN/GEMINI_API_KEY is not configured` — CI has no `.env` (gitignored by
+  design), so the token guards tripped before the mocked transports were reached. Locally green
+  only because the real `backend/.env` masked it. Classic "works on my laptop" CI catch.
+- Fix (one place, `ci.yml` backend job `env`): dummy tokens/username. Mock transports still
+  intercept all HTTP — nothing real is ever called. Deliberately NOT fixed by weakening the
+  prod guards or rewriting 14 tests: env-provided test secrets are the standard pattern.
+- Verified locally with dummy env (simulating CI): 37/37 previously-failing files green, then
+  full suite **112 passed** + `ruff` clean. Committed + pushed (`7dbc592`); CI re-runs automatically.
