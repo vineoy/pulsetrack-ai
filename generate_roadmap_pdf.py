@@ -177,7 +177,7 @@ def build():
 
     badges = styled_table(
         ["Backend", "Frontend", "Infra", "Cost"],
-        [["FastAPI + Postgres<br/>+ Redis + Gemini", "React + TS + Vite<br/>+ Tailwind + Recharts", "Docker + GitHub Actions<br/>+ Render + Vercel", "<b>$0</b> — Neon + Upstash<br/>+ Resend + Supabase"]],
+        [["FastAPI + Postgres<br/>+ Redis + Gemini", "React + TS + Vite<br/>+ Tailwind + Recharts", "Docker + GitHub Actions<br/>+ Northflank + Vercel", "<b>$0</b> — Neon + Upstash<br/>+ Telegram auto-connect"]],
         [44*mm, 44*mm, 44*mm, 36*mm]
     )
     story.append(badges)
@@ -292,9 +292,9 @@ def build():
             ["Frontend", "React + TS + Vite<br/>+ Tailwind + shadcn/ui<br/>+ TanStack Query + Recharts", "Most in-demand. Decoupled SPA proves JWT + REST skills. Free on Vercel. Charts perfect for latency."],
             ["AI", "Gemini 2.0 Flash Free", "Free tier ~15 req/min. Only on-demand + cached. Never in hot loop."],
             ["Email", "Resend Free", "100 emails/day free. Enough for demo alerts."],
-            ["Alerts extra", "Discord / Slack webhook<br/>+ Telegram Bot", "100% free, unlimited. No SMS cost."],
+            ["Alerts extra", "Telegram Bot auto-connect<br/>(polling, no chat-ID typing)", "100% free, unlimited. No SMS cost."],
             ["Files", "None needed", "No uploads in v1 — keeps it free + simple."],
-            ["Infra", "Docker + Compose<br/>GitHub Actions<br/>Render Free + Vercel Free", "Render sleeps on free — mention cold start. Docker proves DevOps."],
+            ["Infra", "Docker + Compose<br/>GitHub Actions<br/>Northflank Sandbox + Vercel", "Northflank Sandbox: 2 always-on services free (api+worker). No 15-min sleep. Docker proves DevOps."],
         ], [28*mm, 48*mm, 82*mm]
     ))
     story.append(Spacer(1,2*mm))
@@ -313,10 +313,11 @@ def build():
     story.append(section("04", "How System Works — 3 Flows"))
     story.append(h2("A. Big picture"))
     story.append(code_block([
-        "[React on Vercel] --REST+WS--> [FastAPI on Render] --SQL--> [Neon Postgres]",
-        "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|--> [Upstash Redis: queue/cache/pubsub/lock]",
+        "[React on Vercel] --REST+WS--> [FastAPI on Northflank] --SQL--> [Neon Postgres]",
+        "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|--> [Upstash Redis: queue/cache/pubsub/lock/link-tokens]",
         "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[ARQ Worker] --ping--> [User Websites]",
-        "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[ARQ Worker] --alert--> [Email/Discord/Telegram]",
+        "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[ARQ Worker] --alert--> [Telegram Bot]",
+        "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[ARQ Worker] --poll getUpdates--> [Telegram auto-connect]",
         "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[FastAPI/Worker] --prompt--> [Gemini Free]",
     ]))
     story.append(h2("B. Monitoring loop (every minute)"))
@@ -461,7 +462,7 @@ def build():
     story.extend(ep_table("Deploys + System (4)", [
         ["<b>POST /monitors/{id}/deploys</b><br/>{version} + API-Key", "API-Key", "Mark deploy → vertical line on graph. From GitHub Action."],
         ["<b>GET /monitors/{id}/deploys</b>", "JWT", "List markers to overlay on chart."],
-        ["<b>GET /health</b>", "Public", "200 {status:ok, db:up, redis:up}. Used by Render + CI."],
+        ["<b>GET /health</b>", "Public", "200 {status:ok, db:up, redis:up}. Used by Northflank + CI."],
         ["<b>WS /ws/monitors</b> + <b>/ws/incidents/{id}</b>", "JWT", "Live push: status change, new comment. Via Redis pub/sub."],
     ]))
     story.append(callout("REQUEST / RESPONSE SHAPE (follow everywhere)",
@@ -554,8 +555,8 @@ def build():
         ("PHASE 9 — Docker + CI/CD (Week 7)", "Ship like pro",
          ["Multi-stage Dockerfile (slim, non-root, healthcheck). docker-compose.prod.yml.",
           "GitHub Actions: lint → mypy → pytest → docker build. Branch protection on main.",
-          "Render Blueprint + Neon + Upstash env vars. Alembic migrate on deploy. Vercel env VITE_API_URL."],
-         "Done = git push → Actions green → Render auto-deploys → /health ok prod."),
+          "Northflank (api + worker Sandbox services) + Neon + Upstash env vars. Alembic migrate on deploy. Vercel env VITE_API_URL."],
+         "Done = git push → Actions green → Northflank auto-deploys → /health ok prod."),
         ("PHASE 10 — Launch + Portfolio (Week 7–8)", "Get job",
          ["README: live demo links (dashboard + status page), arch diagram, API table, test badge, $0 cost table, demo creds.",
           "Loom 3-min video: add monitor → kill it → alert → AI explain → resolve. Add to LinkedIn + resume.",
@@ -583,36 +584,36 @@ def build():
     story.append(code_block([
         "Dockerfile: python:3.12-slim → uv sync → non-root appuser → CMD uvicorn + alembic upgrade",
         "Compose local: api:8000 + db:5432 + redis:6379 + worker (same image, CMD arq)",
-        "Compose prod: same image, env from Render/Neon/Upstash, no volumes",
+        "Compose prod: same image, env from Northflank/Neon/Upstash, no volumes",
     ]))
     story.append(h2("CI/CD pipeline"))
     story.append(code_block([
         "git push → GitHub Actions: ruff → mypy → pytest (postgres+redis services) → docker build test",
-        "main merge → deploy backend → Render (auto) → run migrations → deploy frontend → Vercel",
+        "main merge → deploy backend → Northflank (auto) → run migrations → deploy frontend → Vercel",
         "PR must be green to merge. Add badges: build | coverage | python 3.12 | docker",
     ]))
     story.append(h2("Free deploy map — copy this"))
     story.append(styled_table(
         ["What", "Where Free", "Env var / note"],
         [
-            ["Backend API + Worker (1 service)", "Render Free (750h/mo)", "1 instance only. No SSH/disk. See FREE CATCH below."],
-            ["Postgres", "Neon Free 512MB (use this, NOT Render Postgres)", "DATABASE_URL pooled. Enable pgvector. Render Free DB expires in 30 days."],
-            ["Redis", "Upstash Free 10k/day (use this, NOT Render Key Value)", "REDIS_URL. 10 monitors x 1min = ~3k cmds/day — safe. Render Free KV loses data on restart."],
-            ["Frontend", "Vercel Free", "VITE_API_URL=https://your-api.onrender.com"],
-            ["Email", "Resend Free 100/day", "From onboarding@resend.dev for demo."],
-            ["Alerts", "Discord/Slack/Telegram", "Unlimited free. Use for demo video."],
+            ["Backend API", "Northflank Sandbox (always-on)", "Same image, CMD uvicorn. No 15-min sleep."],
+            ["ARQ Worker", "Northflank Sandbox (always-on)", "Same image, CMD arq. Polls checks + Telegram getUpdates every 30s."],
+            ["Postgres", "Neon Free 512MB (permanent)", "DATABASE_URL pooled. Enable pgvector."],
+            ["Redis", "Upstash Free (persistent)", "REDIS_URL. Queue + cache + tg_link tokens. 10 monitors x 1min = ~3k cmds/day — safe."],
+            ["Frontend", "Vercel Free", "VITE_API_URL=https://your-api.northflank.app"],
+            ["Alerts", "Telegram Bot auto-connect", "Unlimited free. [Connect] → Start → auto channel. No chat-ID typing."],
         ], [42*mm, 42*mm, 74*mm]
     ))
     story.append(Spacer(1,3*mm))
-    story.append(callout("FREE CATCH — RENDER SLEEPS AFTER 15 MIN (LOCKED DECISION: STAY ON FREE)",
-        "Render Free web service <b>spins down after 15 min with no traffic</b>. You do <b>NOT restart manually</b> — it auto-wakes on next request in ~50 sec. <b>Catch for this project:</b> when asleep, your 1-min checks + worker also stop, so graphs will show gaps. <b>Free fix we will use:</b> ping <b>GET /health</b> every 14 min via <b>cron-job.org (free) or UptimeRobot (free)</b> to keep it awake. 1 always-awake service = ~720h/mo, fits in 750h free quota. Mention cold-start + keep-alive in README so recruiters know you understand free-tier trade-offs. Render Free Postgres/Key Value NOT used — Neon + Upstash stay always-on free.",
+    story.append(callout("DEPLOY DECISION — NORTHFLANK SANDBOX (ALWAYS-ON FREE)",
+        "Backend api + ARQ worker run as <b>2 always-on Sandbox services on Northflank (free)</b> — no 15-min sleep, so 1-min checks + Telegram <b>getUpdates polling every 30s</b> keep running. Frontend on <b>Vercel</b>, Postgres on <b>Neon</b> (permanent free), Redis on <b>Upstash</b> (persistent free). Same Docker image for api (<b>uvicorn</b>) + worker (<b>arq</b>). Result: <b>$0/mo</b> with real monitoring.",
         bg=AMBER_BG, border=HexColor("#FCD34A"), title_color="#92400E"))
     story.append(Spacer(1,2*mm))
     story.append(code_block([
-        "Keep-alive (free): cron-job.org → GET https://your-api.onrender.com/health every 14 min",
-        "Render start CMD (free, 1 service runs both): web: alembic upgrade head && uvicorn app.main:app",
-        "&nbsp;&nbsp;+ arq worker in same service via start.sh (Render Free has no separate Background Worker)",
-        "Result: $0/mo, always-awake within 750h, checks keep running. Upgrade to $7/mo Starter only if you want no sleep.",
+        "Northflank start: api → alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000",
+        "Northflank start: worker → arq app.workers.settings.WorkerSettings",
+        "Telegram auto-connect: POST /notification-channels/connect → t.me/Bot?start=TOKEN → poller auto-creates channel",
+        "Result: $0/mo, always-on, checks keep running. No keep-alive pinger needed.",
     ]))
 
     # ================= 12 =================
@@ -668,7 +669,7 @@ def build():
     story.extend(bullets([
         "Built multi-tenant uptime SaaS monitoring URLs every minute with <b>FastAPI async + ARQ workers + Redis queue</b>; p95 check &lt;600ms, flap-safe alerting.",
         "Designed append-only <b>Postgres checks table (BRIN index, 90-day retention)</b> + Redis cache/pub-sub for live dashboard via WebSockets; public status pages cached 30s.",
-        "Integrated <b>Gemini Flash RAG</b> for root-cause + post-mortems with 24h cache (90% fewer AI calls); shipped <b>Docker + GitHub Actions CI (80% pytest)</b> to Render/Vercel for $0.",
+        "Integrated <b>Gemini Flash RAG</b> for root-cause + post-mortems with 24h cache (90% fewer AI calls); shipped <b>Docker + GitHub Actions CI (80% pytest)</b> to Northflank/Vercel for $0.",
     ]))
     story.append(h2("Interview answers — memorize"))
     story.extend(bullets([

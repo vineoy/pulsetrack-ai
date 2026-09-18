@@ -29,6 +29,17 @@ app = FastAPI(
 register_exception_handlers(app)
 app.include_router(api_router)
 
+# Phase 5 live WebSocket (auth via ?token=, team-scoped fan-out over Redis pub/sub).
+from app.api.ws import router as ws_router  # noqa: E402
+
+app.include_router(ws_router)
+
+# Phase 5 public status page at root-level URLs too (roadmap: /status/{slug}),
+# in addition to /api/v1/status/{slug}. Same router, no auth, cached.
+from app.api.v1.routers.status import router as status_root_router  # noqa: E402
+
+app.include_router(status_root_router)
+
 
 @app.get("/")
 async def root():
@@ -37,7 +48,7 @@ async def root():
 
 @app.get("/health", tags=["system"])
 async def health() -> JSONResponse:
-    """Liveness + dependency readiness. Used by Docker, CI and Render."""
+    """Liveness + dependency readiness. Used by Docker, CI and Northflank."""
     checks: dict[str, str] = {}
     try:
         async with engine.connect() as conn:
