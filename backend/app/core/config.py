@@ -26,7 +26,13 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 15
     refresh_token_expire_days: int = 7
     gemini_api_key: str = ""
-    resend_api_key: str = ""
+    # gemini-2.0-flash is retired; 3.5-flash-lite is the cheapest/fastest
+    # free-tier text model (verified 2026-09-17). Overridable per environment.
+    gemini_model: str = "gemini-3.5-flash-lite"
+    telegram_bot_token: str = ""
+    telegram_bot_username: str = ""
+    telegram_escalation_delay_min: int = 10
+    telegram_link_expire_min: int = 15
 
 
 @lru_cache

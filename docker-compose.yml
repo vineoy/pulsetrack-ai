@@ -44,15 +44,23 @@ services:
       ENVIRONMENT: local
       DATABASE_URL: postgresql+asyncpg://pulse:pulse@db:5432/pulsetrack
       REDIS_URL: redis://redis:6379/0
-      # Dev-only value baked into compose; production gets a real secret from Render env vars.
+      # Dev-only value baked into compose; production gets a real secret from Northflank env vars.
       JWT_SECRET: dev-local-9f4c1e7a2b8d5360-change-me-in-prod
+      # Telegram-only alerts: single BotFather token for all teams + username for deep links
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:-}
+      TELEGRAM_ESCALATION_DELAY_MIN: ${TELEGRAM_ESCALATION_DELAY_MIN:-10}
+      TELEGRAM_LINK_EXPIRE_MIN: ${TELEGRAM_LINK_EXPIRE_MIN:-15}
+      # AI analyst (Phase 6): free key from https://aistudio.google.com/apikey
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.5-flash-lite}
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
 
-  # --- ARQ worker : pings websites, creates/resolves incidents. Same image as api ---
+  # --- ARQ worker : pings websites, creates/resolves incidents, sends Telegram. Same image as api ---
   worker:
     build: ./backend
     command: arq app.workers.settings.WorkerSettings
@@ -64,6 +72,13 @@ services:
       DATABASE_URL: postgresql+asyncpg://pulse:pulse@db:5432/pulsetrack
       REDIS_URL: redis://redis:6379/0
       JWT_SECRET: dev-local-9f4c1e7a2b8d5360-change-me-in-prod
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:-}
+      TELEGRAM_ESCALATION_DELAY_MIN: ${TELEGRAM_ESCALATION_DELAY_MIN:-10}
+      TELEGRAM_LINK_EXPIRE_MIN: ${TELEGRAM_LINK_EXPIRE_MIN:-15}
+      # AI analyst (Phase 6): free key from https://aistudio.google.com/apikey
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.5-flash-lite}
     depends_on:
       db:
         condition: service_healthy

@@ -45,5 +45,7 @@ class Incident(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     ack_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     downtime_sec: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Escalation tracking for Phase 4: when the OPEN alert was escalated (NULL = not yet).
+    escalated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     # Filled by the AI analyst in Phase 6; column exists from day one.
     ai_summary: Mapped[str | None] = mapped_column(String, nullable=True)
