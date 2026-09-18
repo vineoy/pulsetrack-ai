@@ -12,6 +12,13 @@ on:
 jobs:
   backend:
     runs-on: ubuntu-latest
+    # Dummy secrets: the real .env is gitignored, and tests must never depend
+    # on it. Mock transports intercept all HTTP, so these values never leave
+    # the runner — they only satisfy the "token configured" guards.
+    env:
+      TELEGRAM_BOT_TOKEN: ci-dummy-token
+      TELEGRAM_BOT_USERNAME: CiDummyBot
+      GEMINI_API_KEY: ci-dummy-key
     services:
       postgres:
         image: postgres:16-alpine
