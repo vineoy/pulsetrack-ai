@@ -29,7 +29,7 @@
 | 6 | Gemini AI (+draft removal + Ask general knowledge) | ✅ DONE | 2026-09-18 |
 | 7 | API Keys + Webhooks + Audit + Team invites UI | ✅ DONE | 2026-09-18 |
 | 8 | Testing + Polish + CSV Export | ✅ DONE | 2026-09-18 |
-| 9 | Docker prod + CI/CD | 🔄 IN PROGRESS | — |
+| 9 | Docker prod + CI/CD | ✅ DONE | 2026-09-18 |
 | 8 | Testing + Polish + CSV Export | ⬜ not started | — |
 | 9 | Docker prod + CI/CD | ⬜ not started | — |
 | 10 | Launch + Portfolio | ⬜ not started | — |
