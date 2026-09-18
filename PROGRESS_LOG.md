@@ -32,7 +32,38 @@
 | 9 | Docker prod + CI/CD | ✅ DONE | 2026-09-18 |
 | 8 | Testing + Polish + CSV Export | ⬜ not started | — |
 | 9 | Docker prod + CI/CD | ⬜ not started | — |
-| 10 | Launch + Portfolio | ⬜ not started | — |
+| 10 | Launch + Portfolio (real deploy first) | 🔄 IN PROGRESS | — |
+
+---
+
+# PHASE 10 — Launch + Portfolio (IN PROGRESS — started 2026-09-18)
+
+**Order decided:** real deploy first (Neon → Upstash → migrate → Northflank → Vercel
+→ verify), portfolio pack after (README links, demo script, resume lines).
+
+> Diary follows chronologically — one entry per action.
+
+### 10.0 — Deploy kickoff (2026-09-18)
+- CI green on `main` (backend+frontend+docker) — safe base to deploy from.
+- Prod secrets live in dashboards only, never in git (same rule as local `.env`).
+- Division of labour: user clicks dashboards (accounts are theirs) + pastes URLs/URLs
+  results here; assistant runs migrations, verifies /health/worker, updates docs.
+- next: account creation (Neon, Upstash, Northflank, Vercel — all free tiers).
+
+### 10.1 — Managed-DB TLS fix + Upstash verified (2026-09-19)
+- User pasted Neon pooled URL + Upstash URL (used in-memory only, never written to any file).
+- Real bug found on first Neon attempt: `neon-postgresql://` scheme + `?sslmode=` are rejected
+  (`connect() got an unexpected keyword argument 'sslmode'`) — affected prod engine AND alembic.
+- Fix: `app/core/db.py::resolve_database_config()` pops `sslmode` out of the URL and translates
+  it into an `SSLContext` (default verification; Neon presents a valid public cert). No `sslmode`
+  (local Docker) → byte-identical behavior. `migrations/env.py` uses the same helper. Ruff clean,
+  auth+monitor tests green (27 passed).
+- Upstash (Mumbai): PING + write/read/delete round-trip OK from this laptop over `rediss://`.
+- Neon: URL proven valid via 8.8.8.8 (CNAME + AWS Singapore IPs), but this laptop's default DNS
+  resolver returns REFUSED for it → migrations can't run from here. Not a Neon problem; the
+  designed path (Northflank migrate job, clean datacenter DNS) covers it — see 10.2.
+- Eviction Q&A (Step 1): Upstash eviction stays OFF (queue entries must never vanish silently;
+  usage is KBs vs 256MB; all TTL'd keys self-clean; OOM would fail loudly, never silently).
 
 ## Developer Environment (as detected on this machine)
 

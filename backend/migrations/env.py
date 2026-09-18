@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 from alembic import context
 
 from app.core.config import get_settings
+from app.core.db import resolve_database_config
 from app.models import Base
 
 # this is the Alembic Config object, which
@@ -20,7 +21,9 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 # Database URL comes from app settings (env var), never hardcoded in alembic.ini.
-config.set_main_option("sqlalchemy.url", get_settings().database_url)
+# Same SSL translation as the app engine (Neon needs TLS, asyncpg rejects ?sslmode=).
+_clean_url, _connect_args = resolve_database_config(get_settings().database_url)
+config.set_main_option("sqlalchemy.url", _clean_url)
 
 # Model metadata: alembic compares this against the live DB to autogenerate migrations.
 target_metadata = Base.metadata
@@ -73,6 +76,7 @@ async def run_async_migrations() -> None:
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
+        connect_args=_connect_args,
     )
 
     async with connectable.connect() as connection:
