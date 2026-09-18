@@ -119,6 +119,7 @@ async def check_job(ctx: dict, monitor_id: str) -> str:
                 return "skipped:monitor"
 
             result = await probe(monitor)
+            checked_at = datetime.now(UTC)
             await check_repository.create(
                 db,
                 monitor_id=mid,
@@ -126,18 +127,83 @@ async def check_job(ctx: dict, monitor_id: str) -> str:
                 latency_ms=result.latency_ms,
                 status_code=result.status_code,
                 error=result.error,
-                checked_at=datetime.now(UTC),
+                checked_at=checked_at,
             )
             monitor.next_check_at = datetime.now(UTC) + timedelta(
                 minutes=monitor.interval_min
             )
 
             incident = await apply_flap_logic(db, monitor)
+            # Remember whether this transition was OPEN or RESOLVED for alert enqueue
+            incident_kind: str | None = None
+            incident_id_for_alert: str | None = None
+            if incident is not None:
+                if incident.status == "OPEN":
+                    incident_kind = "open"
+                    incident_id_for_alert = str(incident.id)
+                elif incident.status == "RESOLVED":
+                    incident_kind = "recovery"
+                    incident_id_for_alert = str(incident.id)
             await db.commit()
 
             outcome = f"{result.status} {result.status_code or '-'} {result.latency_ms or '-'}ms"
             if incident is not None:
                 outcome += f" incident:{incident.status}"
+
+            # Enqueue Telegram alert + webhook delivery outside the DB transaction
+            # but before releasing lock, so we never miss a notification.
+            # ctx["redis"] is the ARQ pool.
+            if incident_kind and incident_id_for_alert:
+                try:
+                    await ctx["redis"].enqueue_job(
+                        "telegram_alert_job", incident_id_for_alert, incident_kind
+                    )
+                    outcome += f" alert:{incident_kind} queued"
+                except Exception:
+                    # Queue full or Redis blip — sweep cron will catch OPEN escalation,
+                    # but for now we don't fail the check itself.
+                    pass
+                try:
+                    await ctx["redis"].enqueue_job(
+                        "webhook_delivery_job", incident_id_for_alert, incident_kind
+                    )
+                    outcome += " webhook:queued"
+                except Exception:
+                    pass
+
+            # Live fan-out (Phase 5): publish AFTER commit so subscribers never see
+            # a check that gets rolled back. Best-effort — never fails the probe.
+            # Cache invalidation for the public status page happens here too.
+            try:
+                from app.services import live_service
+
+                incident_label = None
+                if incident is not None:
+                    incident_label = incident.status  # OPEN | RESOLVED
+                await live_service.publish_check(
+                    redis_client,
+                    live_service.build_check_event(
+                        team_id=monitor.team_id,
+                        monitor_id=mid,
+                        status=result.status,
+                        latency_ms=result.latency_ms,
+                        status_code=result.status_code,
+                        checked_at=checked_at,
+                        incident=incident_label,
+                    ),
+                )
+                if incident is not None or result.status == "DOWN":
+                    try:
+                        from app.models.team import Team
+
+                        team = await db.get(Team, monitor.team_id)
+                        await live_service.invalidate_public_cache(
+                            redis_client, team.slug if team else None
+                        )
+                    except Exception:  # noqa: BLE001
+                        pass
+            except Exception:  # noqa: BLE001
+                pass
             return outcome
     finally:
         await redis_client.delete(lock_key)

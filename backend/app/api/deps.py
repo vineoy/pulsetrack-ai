@@ -39,7 +39,40 @@ async def get_token_payload(
 TokenPayloadDep = Annotated[TokenPayload, Depends(get_token_payload)]
 
 
-async def get_current_user(payload: TokenPayloadDep, db: DBDep, redis: RedisDep) -> User:
+async def get_bearer_token(
+    creds: Annotated[HTTPAuthorizationCredentials | None, Security(bearer)],
+) -> str:
+    if creds is None:
+        raise _auth_error("NOT_AUTHENTICATED", "Missing bearer token")
+    return creds.credentials
+
+
+BearerToken = Annotated[str, Depends(get_bearer_token)]
+
+
+async def _user_from_api_key(token: str, db: DBDep) -> User:
+    """Machine auth (Phase 7): `pk_live_...` → creator user (role inherited).
+
+    Lookup by 12-char prefix (indexed), constant-time hash compare. The creator
+    must still be active and on the key's team — keys die with deactivation.
+    """
+    from app.repositories import api_key_repository
+
+    row = await api_key_repository.get_by_prefix(db, token[:12])
+    if row is None or not api_key_repository.verify_key(token, row.key_hash):
+        raise _auth_error("TOKEN_INVALID", "Unknown or revoked API key")
+    user = await user_repository.get_by_id(db, row.user_id)
+    if user is None or not user.is_active or user.team_id != row.team_id:
+        raise _auth_error("TOKEN_INVALID", "API key owner no longer has access")
+    # Transient (unmapped) marker so audit/detail code can tell key usage apart.
+    user.api_key_prefix = row.prefix  # type: ignore[attr-defined]
+    return user
+
+
+async def get_current_user(token: BearerToken, db: DBDep, redis: RedisDep) -> User:
+    if token.startswith("pk_"):
+        return await _user_from_api_key(token, db)
+    payload = decode_token(token)
     if payload.type != "access":
         raise _auth_error("TOKEN_INVALID", "Wrong token type")
     if await redis.exists(f"jwt:black:{payload.jti}"):

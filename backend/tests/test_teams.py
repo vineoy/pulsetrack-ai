@@ -53,3 +53,56 @@ class TestTeams:
         member_login = await login(client, "mem2@m.dev", temp_password)
         resp = await client.get(f"{API}/teams/members", headers=bearer(member_login))
         assert resp.status_code == 200
+
+
+class TestRemoveMember:
+    async def test_owner_removes_member_login_dies(self, client):
+        owner = await register_user(client, email="own@rm.dev", team_name="Remove Co")
+        invite = await client.post(
+            f"{API}/teams/invite",
+            json={"email": "gone@rm.dev", "role": "member"},
+            headers=bearer(owner),
+        )
+        member_id = invite.json()["data"]["user"]["id"]
+        temp_password = invite.json()["data"]["temp_password"]
+        member_login = await login(client, "gone@rm.dev", temp_password)
+
+        resp = await client.delete(f"{API}/teams/members/{member_id}", headers=bearer(owner))
+        assert resp.status_code == 200
+
+        # removed member vanishes from list and their token is dead
+        resp = await client.get(f"{API}/teams/members", headers=bearer(owner))
+        assert [m["email"] for m in resp.json()["data"]] == ["own@rm.dev"]
+        resp = await client.get(f"{API}/auth/me", headers=bearer(member_login))
+        assert resp.status_code == 401
+
+    async def test_cannot_remove_self(self, client):
+        owner = await register_user(client, email="own@self.dev", team_name="Self Co")
+        me = await client.get(f"{API}/auth/me", headers=bearer(owner))
+        resp = await client.delete(
+            f"{API}/teams/members/{me.json()['data']['user']['id']}", headers=bearer(owner)
+        )
+        assert resp.status_code == 400
+        assert resp.json()["error"]["code"] == "CANNOT_REMOVE_SELF"
+
+    async def test_remove_unknown_or_other_team_is_404(self, client):
+        owner = await register_user(client, email="own@nf.dev", team_name="Nf Co")
+        resp = await client.delete(
+            f"{API}/teams/members/00000000-0000-0000-0000-000000000000",
+            headers=bearer(owner),
+        )
+        assert resp.status_code == 404
+
+    async def test_member_cannot_remove(self, client):
+        owner = await register_user(client, email="own@mr.dev", team_name="Mr Co")
+        invite = await client.post(
+            f"{API}/teams/invite",
+            json={"email": "mem@mr.dev", "role": "member"},
+            headers=bearer(owner),
+        )
+        member_login = await login(client, "mem@mr.dev", invite.json()["data"]["temp_password"])
+        resp = await client.delete(
+            f"{API}/teams/members/{invite.json()['data']['user']['id']}",
+            headers=bearer(member_login),
+        )
+        assert resp.status_code == 403

@@ -11,7 +11,11 @@ from arq.connections import RedisSettings
 from arq.cron import cron
 
 from app.core.config import get_settings
+from app.workers.alerter import sweep_stale_escalations, telegram_alert_job, telegram_test_job
 from app.workers.checker import check_job, enqueue_due_monitors
+from app.workers.heartbeat_checker import heartbeat_checker
+from app.workers.telegram_poller import poll_telegram_updates
+from app.workers.webhooker import webhook_delivery_job
 
 settings = get_settings()
 
@@ -25,10 +29,23 @@ async def on_shutdown(ctx: dict) -> None:
 
 
 class WorkerSettings:
-    functions = [check_job]
+    functions = [
+        check_job,
+        telegram_alert_job,
+        telegram_test_job,
+        poll_telegram_updates,
+        heartbeat_checker,
+        webhook_delivery_job,
+    ]
     cron_jobs: list[Callable[..., Awaitable]] = [
         # every 30 seconds: find monitors where next_check_at <= now, enqueue checks
         cron(enqueue_due_monitors, second={0, 30}, unique=True),
+        # every minute: catch escalations missed due to Redis defer loss / worker sleep
+        cron(sweep_stale_escalations, second={15}, unique=True),
+        # every 30 seconds (offset by 10s): auto-connect Telegram via getUpdates polling
+        cron(poll_telegram_updates, second={10, 40}, unique=True),
+        # every minute: heartbeats silent past period+grace -> MISSING + Telegram
+        cron(heartbeat_checker, second={20}, unique=True),
     ]
     on_startup = on_startup
     on_shutdown = on_shutdown
