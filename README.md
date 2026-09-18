@@ -1,5 +1,8 @@
 # PulseTrack AI
 
+[![ci](https://github.com/vineoy/pulsetrack-ai/actions/workflows/ci.yml/badge.svg)](https://github.com/vineoy/pulsetrack-ai/actions/workflows/ci.yml)
+![python 3.12](https://img.shields.io/badge/python-3.12-blue) ![docker](https://img.shields.io/badge/docker-prod%20image-blue)
+
 Uptime monitoring + public status page SaaS with an **AI incident analyst** (Gemini).
 Add a URL → workers ping it every minute → outages open incidents automatically →
 alerts fire via **Telegram Bot** → AI explains the root cause → customers see a
@@ -8,9 +11,9 @@ public status page. Full plan: `PulseTrack-AI-Roadmap.pdf`. Progress: `PROGRESS_
 ## Stack
 
 Python 3.12 · FastAPI · SQLAlchemy 2.0 (async) · Alembic · PostgreSQL 16 · Redis 7 · ARQ workers ·
-React + TS + Vite (Phase 2+) · Gemini 2.0 Flash · uv · Docker · GitHub Actions · Northflank Sandbox (api+worker) + Vercel (frontend) + Neon (DB) + Upstash (Redis) — $0/month
+React + TS + Vite (Phase 2+) · Gemini 3.5-flash-lite · uv · Docker · GitHub Actions · Northflank Sandbox (api+worker) + Vercel (frontend) + Neon (DB) + Upstash (Redis) — $0/month
 
-## Run locally (Phase 8 state — + CSV export, 88% coverage)
+## Run locally (Phase 9 state — prod images + CI)
 
 Prerequisites: [Docker Desktop](https://www.docker.com/products/docker-desktop/) running, [uv](https://docs.astral.sh/uv/) installed.
 
@@ -119,7 +122,7 @@ def valid(secret, ts, body, sig):
 
 Telegram auto-connect (Option A — polling, 100% free): `TELEGRAM_BOT_TOKEN` + `TELEGRAM_BOT_USERNAME` from @BotFather. Settings → [Connect Telegram] → backend creates one-time token (Redis, 15 min TTL) → `t.me/Bot?start=TOKEN` → user presses Start → worker `poll_telegram_updates` cron (every 30s, `getUpdates`) auto-creates the channel + sends ✅. No chat-ID copy-paste (groups still use manual fallback). Alerts: OPEN → Telegram, RESOLVED → recovery, 10m unacked → escalation. Muted when in maintenance window. Retries 3×, all logged in `alert_logs`.
 
-Deploy: backend api + ARQ worker on **Northflank Sandbox** (2 always-on services free, no 15-min sleep), frontend on Vercel, Postgres on Neon (free, permanent), Redis on Upstash (free, persistent). Same Docker image for api (`uvicorn`) + worker (`arq`).
+Deploy: backend api + ARQ worker on **Northflank Sandbox** (2 always-on services free, no 15-min sleep), frontend on Vercel, Postgres on Neon (free, permanent), Redis on Upstash (free, persistent). Same Docker image for api (`uvicorn`) + worker (`arq`). Full recipe: [`DEPLOY.md`](DEPLOY.md). CI ([`ci.yml`](.github/workflows/ci.yml)) gates every push: ruff → 112 tests on fresh Postgres+Redis → prod image build.
 
 Live: worker publishes every finished check to Redis pub/sub `live`; Dashboard WS patches dots instantly (30s polling stays as fallback). Heartbeat checker cron runs every minute: silence past period+grace → MISSING + Telegram (💔/💚), idempotent, logged in `alert_logs` (kind open/recovery, no incident row in v1).
 

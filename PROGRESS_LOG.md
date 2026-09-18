@@ -891,4 +891,50 @@ green-gated pushes, one-command Northflank deploy. No product features.
   - 9.5 README + diary. Frontend needs no Docker (Vercel builds from git).
 - Needs from user (see chat 2026-09-18): create the GitHub repo + tell me its URL (I can't push
   or enable Actions without it); Northflank account when we reach 9.4.
-- Next actions in order: 9.1 commits → 9.2 images → 9.3 CI → 9.4 deploy pack → 9.5 docs.
+- User gave `https://github.com/vineoy/pulsetrack-ai` + asked for a favicon, then `go`.
+- Next actions in order: favicon → 9.1 commits → 9.2 images → 9.3 CI → 9.4 deploy pack → 9.5 docs.
+
+### Favicon (DONE 2026-09-18)
+- `frontend/public/favicon.svg` was still the default Vite lightning. Replaced with PulseTrack
+  mark (indigo rounded square + white P + emerald status dot); `index.html` title
+  `frontend` → `PulseTrack AI — Uptime Monitoring`. Build green, `dist/favicon.svg` confirmed.
+
+### 9.1 — Git hygiene: remote + story-telling history + push (DONE 2026-09-18)
+- `git remote add origin https://github.com/vineoy/pulsetrack-ai.git`. Verified `.env` +
+  `backend/.env` gitignored (check-ignore) — no secrets committed.
+- Problem: Phases 4–8 lived only in the working tree (last commit was Phase 3). Committed as
+  5 grouped commits (Phase 4 backend / Phase 5 live+heartbeat / Phase 6 AI / Phase 7 platform+team /
+  Phase 8 CSV+coverage) + favicon commit. Honest caveat (in each message + here): retroactive
+  file-grouping, so intermediate commits may not boot standalone — only HEAD is verified green.
+  From Phase 9 on, commits go per-phase live (CI enforces green main).
+- `git push -u origin main` → `main -> main` live. One garbled-command hiccup (aborted, nothing
+  staged) + one wrong-path hiccup (`backend/app/pyproject.toml` → `backend/pyproject.toml`);
+  both recovered cleanly, verified via `git status`/`git log` after each step.
+
+### 9.2 — Prod image + compose + dry-run (DONE 2026-09-18)
+- Created `backend/Dockerfile.prod` (multi-stage: deps layer cached on lockfile, runtime layer on
+  code; `appuser` non-root; stdlib-only HEALTHCHECK on `$PORT/health`; `uv sync --frozen --no-dev`
+  so pytest/ruff never ship). Dev `Dockerfile` untouched.
+- Created `docker-compose.prod.yml` (api :8001 + worker + `migrate` one-shot with
+  `service_completed_successfully` gate; env-driven for Neon/Upstash; dev defaults point at
+  host-mapped dev DB via `host.docker.internal`). Fixed a redundant `command` next to migrate's
+  `entrypoint` before running.
+- Dry-run vs dev DB (idempotent, safe): image builds; `migrate` exit 0; prod api answers
+  `/health ok` as `appuser`; worker boots all 10 functions; stack torn down, dev `:8000` untouched.
+
+### 9.3 — GitHub Actions CI (DONE 2026-09-18)
+- Created `.github/workflows/ci.yml` (push/PR): backend job (ruff → pytest on Postgres 16
+  port-mapped to **5433** to match test URLs + Redis 7), frontend job (Node 24 per `.nvmrc`,
+  `npm ci` + lint + build), docker job (prod image build, needs backend+frontend green).
+  Zero secrets required (tests mock Telegram/Gemini). YAML parse-verified.
+
+### 9.4 — Northflank DEPLOY.md (DONE 2026-09-18)
+- Created `DEPLOY.md`: accounts table, api/worker service definitions (same image, two start
+  commands, full env table with JWT generation command), migrate-before-traffic rule + local
+  equivalent, Vercel settings, 4-step verify checklist, rollback note (migrations additive-only
+  on upgrade path — confirmed: all drops live in `downgrade()` only).
+
+### 9.5 — README + diary (DONE 2026-09-18)
+- `README.md`: CI + python + docker badges, Phase 9 header, Gemini model name corrected
+  (2.0-flash → 3.5-flash-lite), deploy paragraph links DEPLOY.md + ci.yml.
+- This diary: 9.0 → 9.5 entries. Frontend needs no Docker (Vercel builds from git).

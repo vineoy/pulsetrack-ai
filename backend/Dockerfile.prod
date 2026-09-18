@@ -1,0 +1,44 @@
+# Production image (Phase 9). Dev stays on backend/Dockerfile (root, --reload, volume).
+#
+# Prod rules: non-root user, frozen code (no reload, no mounts), HEALTHCHECK,
+# slim layers (no uv cache, no tests). Same image runs BOTH api and worker —
+# only the start command differs (see docker-compose.prod.yml / DEPLOY.md).
+#
+# Build from the REPO ROOT so migr+app paths stay identical to dev:
+#   docker build -f backend/Dockerfile.prod -t pulsetrack-api:prod ./backend
+
+# ---------- Stage 1: dependencies (rebuilt only when pyproject/uv.lock change)
+FROM python:3.12-slim AS deps
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
+ENV UV_PROJECT_ENVIRONMENT=/opt/venv \
+    UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy
+WORKDIR /app
+COPY pyproject.toml uv.lock ./
+# --no-dev: runtime deps + the app package itself (importable regardless of cwd).
+# Dev-only tools (pytest, ruff) stay out of the image — smaller attack surface.
+RUN uv sync --frozen --no-dev
+
+# ---------- Stage 2: runtime (rebuilt on every code change, small layer)
+FROM python:3.12-slim AS runtime
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PATH="/opt/venv/bin:$PATH"
+WORKDIR /app
+
+# Non-root: most container breakouts need root. One USER line kills the class.
+RUN groupadd -r appuser && useradd -r -g appuser appuser
+COPY --from=deps /opt/venv /opt/venv
+COPY app ./app
+COPY alembic.ini ./alembic.ini
+COPY migrations ./migrations
+RUN chown -R appuser:appuser /app
+USER appuser
+
+EXPOSE 8000
+# Platform kills/replaces the container automatically when this fails.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+    CMD python -c "import os,urllib.request; urllib.request.urlopen('http://localhost:' + os.environ.get('PORT', '8000') + '/health')"
+
+# Northflank overrides per service (api vs worker vs migrate job).
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

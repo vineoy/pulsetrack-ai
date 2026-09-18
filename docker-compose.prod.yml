@@ -1,0 +1,82 @@
+# Production compose (Phase 9) — mirrors Northflank, runs WITHOUT Northflank.
+#
+# Differences from dev docker-compose.yml:
+# - prod image (Dockerfile.prod: non-root, frozen code, healthcheck), no volumes
+# - NO local db/redis containers: points at REAL external services via env
+#   (Neon Postgres + Upstash Redis — same as Northflank will use)
+# - `migrate` one-shot runs `alembic upgrade head` BEFORE api+worker boot
+#   (new code + old tables = 500s, so tables migrate first — always)
+#
+# Dry-run locally against your DEV database (safe: migrations are idempotent,
+# `upgrade head` is a no-op when already current):
+#   docker compose -f docker-compose.prod.yml --env-file .env up --build migrate
+# Full local prod check (needs .env with DATABASE_URL/REDIS_URL/JWT_SECRET):
+#   docker compose -f docker-compose.prod.yml --env-file .env up --build
+name: pulsetrack-ai-prod
+
+services:
+  migrate:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.prod
+    # ${VAR:-default}: dev defaults hit host-mapped Postgres/Redis from inside
+    # the container via host.docker.internal (dev DB on host port 5433).
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://pulse:pulse@host.docker.internal:5433/pulsetrack}
+      REDIS_URL: ${REDIS_URL:-redis://host.docker.internal:6379/0}
+      JWT_SECRET: ${JWT_SECRET:-prod-dry-run-only-change-me}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:-}
+      TELEGRAM_ESCALATION_DELAY_MIN: ${TELEGRAM_ESCALATION_DELAY_MIN:-10}
+      TELEGRAM_LINK_EXPIRE_MIN: ${TELEGRAM_LINK_EXPIRE_MIN:-15}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.5-flash-lite}
+    # One-shot: upgrades the schema, then exits 0 (api/worker wait for it).
+    entrypoint: ["sh", "-c", "alembic upgrade head"]
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.prod
+    ports:
+      - "8001:8000" # :8001 so dev :8000 keeps running untouched
+    environment:
+      PORT: "8000"
+      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://pulse:pulse@host.docker.internal:5433/pulsetrack}
+      REDIS_URL: ${REDIS_URL:-redis://host.docker.internal:6379/0}
+      JWT_SECRET: ${JWT_SECRET:-prod-dry-run-only-change-me}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:-}
+      TELEGRAM_ESCALATION_DELAY_MIN: ${TELEGRAM_ESCALATION_DELAY_MIN:-10}
+      TELEGRAM_LINK_EXPIRE_MIN: ${TELEGRAM_LINK_EXPIRE_MIN:-15}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.5-flash-lite}
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\""]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.prod
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://pulse:pulse@host.docker.internal:5433/pulsetrack}
+      REDIS_URL: ${REDIS_URL:-redis://host.docker.internal:6379/0}
+      JWT_SECRET: ${JWT_SECRET:-prod-dry-run-only-change-me}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:-}
+      TELEGRAM_ESCALATION_DELAY_MIN: ${TELEGRAM_ESCALATION_DELAY_MIN:-10}
+      TELEGRAM_LINK_EXPIRE_MIN: ${TELEGRAM_LINK_EXPIRE_MIN:-15}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.5-flash-lite}
+    command: ["arq", "app.workers.settings.WorkerSettings"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
