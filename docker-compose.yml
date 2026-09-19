@@ -42,7 +42,7 @@ services:
     environment:
       APP_NAME: PulseTrack AI
       ENVIRONMENT: local
-      DATABASE_URL: postgresql+asyncpg://pulse:pulse@db:5432/pulsetrack
+      DATABASE_URL: postgresql+psycopg://pulse:pulse@db:5432/pulsetrack
       REDIS_URL: redis://redis:6379/0
       # Dev-only value baked into compose; production gets a real secret from Northflank env vars.
       JWT_SECRET: dev-local-9f4c1e7a2b8d5360-change-me-in-prod
@@ -69,7 +69,7 @@ services:
     environment:
       APP_NAME: PulseTrack AI
       ENVIRONMENT: local
-      DATABASE_URL: postgresql+asyncpg://pulse:pulse@db:5432/pulsetrack
+      DATABASE_URL: postgresql+psycopg://pulse:pulse@db:5432/pulsetrack
       REDIS_URL: redis://redis:6379/0
       JWT_SECRET: dev-local-9f4c1e7a2b8d5360-change-me-in-prod
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}

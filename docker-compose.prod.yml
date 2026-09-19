@@ -22,7 +22,7 @@ services:
     # ${VAR:-default}: dev defaults hit host-mapped Postgres/Redis from inside
     # the container via host.docker.internal (dev DB on host port 5433).
     environment:
-      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://pulse:pulse@host.docker.internal:5433/pulsetrack}
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://pulse:pulse@host.docker.internal:5433/pulsetrack}
       REDIS_URL: ${REDIS_URL:-redis://host.docker.internal:6379/0}
       JWT_SECRET: ${JWT_SECRET:-prod-dry-run-only-change-me}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
@@ -42,7 +42,7 @@ services:
       - "8001:8000" # :8001 so dev :8000 keeps running untouched
     environment:
       PORT: "8000"
-      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://pulse:pulse@host.docker.internal:5433/pulsetrack}
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://pulse:pulse@host.docker.internal:5433/pulsetrack}
       REDIS_URL: ${REDIS_URL:-redis://host.docker.internal:6379/0}
       JWT_SECRET: ${JWT_SECRET:-prod-dry-run-only-change-me}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
@@ -67,7 +67,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile.prod
     environment:
-      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://pulse:pulse@host.docker.internal:5433/pulsetrack}
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://pulse:pulse@host.docker.internal:5433/pulsetrack}
       REDIS_URL: ${REDIS_URL:-redis://host.docker.internal:6379/0}
       JWT_SECRET: ${JWT_SECRET:-prod-dry-run-only-change-me}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}

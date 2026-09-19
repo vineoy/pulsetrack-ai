@@ -21,7 +21,7 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 # Database URL comes from app settings (env var), never hardcoded in alembic.ini.
-# Same SSL translation as the app engine (Neon needs TLS, asyncpg rejects ?sslmode=).
+# Same driver-aware URL handling as the app engine (see db.resolve_database_config).
 _clean_url, _connect_args = resolve_database_config(get_settings().database_url)
 config.set_main_option("sqlalchemy.url", _clean_url)
 

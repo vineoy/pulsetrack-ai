@@ -65,6 +65,32 @@
 - Eviction Q&A (Step 1): Upstash eviction stays OFF (queue entries must never vanish silently;
   usage is KBs vs 256MB; all TTL'd keys self-clean; OOM would fail loudly, never silently).
 
+### 10.2 — Neon auth saga: channel-binding + empty 003 (DONE 2026-09-19)
+- DNS fixed via 8.8.8.8/1.1.1.1 (user changed Windows Wi-Fi DNS, nslookup proof). Three passwords
+  (owner, owner-reset, fresh `pulse_app` role) all failed `InvalidPasswordError` — ruled out typos
+  by copy-paste retry. Decisive experiment: `psycopg` (libpq) with `channel_binding=require` →
+  `OK (1,)`. Conclusion: this Neon project requires SCRAM channel-binding auth, which asyncpg
+  cannot do at all. Passwords were right all along.
+- Fix: driver swap asyncpg → `psycopg[binary]` (URL schemes in config/conftest/compose/`.env.example`,
+  `resolve_database_config` now passes psycopg URLs through untouched incl. channel_binding).
+  Zero raw-asyncpg usage in code (grep-verified), so SQLAlchemy abstracted it fully. Plus Windows
+  `SelectorEventLoopPolicy` in `db.py` (psycopg-async refuses ProactorEventLoop).
+- Detour honesty: Docker Desktop was found stopped mid-debug (empty `docker ps` + closed 5433) —
+  restarted + rebuilt dev images (pre-switch venv). Also: `uv run ruff` transiently failed after
+  the dep churn; `uv sync --frozen` healed it.
+- Fresh-DB proof exposed a REAL latent bug: migration 003 was an empty `pass` (incidents table
+  never captured; dev DBs got it via create_all). Fresh upgrades died at 004's FKs. Backfilled
+  003 from the Incident model (minus `escalated_at`, owned by 004 — caught that collision on the
+  first fresh attempt too). Verified: empty DB → 001–007 clean, 13 tables, head `b035e87fd1ef`.
+- `pulse_app` needed `GRANT ALL ON DATABASE/SCHEMA` (user ran in SQL Editor). Full suite re-run
+  pending (112-test baseline must be re-proven on psycopg).
+
+### 10.3 — Neon migrated + suite re-proven on psycopg (DONE 2026-09-19)
+- `alembic upgrade head` vs Neon: 001→007 clean. Verified: 13 tables, head `b035e87fd1ef`.
+  ( prod DATABASE_URL keeps `postgresql://` + `sslmode=require&channel_binding=require` —
+  psycopg speaks both natively; `resolve_database_config` passes psycopg URLs through.)
+- Full suite on psycopg: **112 passed** (67s), `ruff` clean. Temp probe scripts deleted.
+
 ## Developer Environment (as detected on this machine)
 
 | Tool | Version | Status |

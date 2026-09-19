@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     debug: bool = True
 
     # Port 5433 on the host: a local PostgreSQL service already owns 5432 on this machine.
-    database_url: str = "postgresql+asyncpg://pulse:pulse@localhost:5433/pulsetrack"
+    database_url: str = "postgresql+psycopg://pulse:pulse@localhost:5433/pulsetrack"
     redis_url: str = "redis://localhost:6379/0"
 
     # Declared now so .env.example matches config; used from Phase 1 onwards.

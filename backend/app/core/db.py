@@ -1,5 +1,14 @@
 import ssl
+import sys
 from collections.abc import AsyncGenerator
+
+if sys.platform == "win32":
+    # psycopg (async) cannot run on Windows' default ProactorEventLoop —
+    # force SelectorEventLoop process-wide. Linux (Docker/Northflank/CI) is
+    # unaffected. Without this, every DB call fails on local Windows runs.
+    import asyncio
+
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 from sqlalchemy.engine.url import make_url
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -12,11 +21,15 @@ settings = get_settings()
 def resolve_database_config(url_str: str) -> tuple[str, dict]:
     """Split a DATABASE_URL into (clean_url, connect_args).
 
-    Managed Postgres (Neon) requires TLS but asyncpg rejects libpq-style
-    `?sslmode=` query params. So: pop `sslmode` out of the URL and translate it
-    into an SSLContext instead. No `sslmode` (local Docker) → unchanged behavior.
+    Driver-aware: psycopg speaks native libpq params (`?sslmode=`,
+    `?channel_binding=` incl. SCRAM channel-binding auth that Neon requires),
+    so its URLs pass through untouched. The legacy asyncpg path pops `sslmode`
+    out and translates it into an SSLContext instead. No TLS params (local
+    Docker) → unchanged behavior either way.
     """
     url = make_url(url_str)
+    if "+psycopg" in url.drivername:
+        return url_str, {}
     query = dict(url.query)
     sslmode = query.pop("sslmode", None)
     connect_args: dict = {}

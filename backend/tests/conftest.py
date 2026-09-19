@@ -11,14 +11,14 @@ from app.models import Base
 
 # Tests run against the SAME docker-compose Postgres/Redis, but in a separate
 # database (pulsetrack_test) and Redis DB number (1) so dev data is never touched.
-ADMIN_DB_URL = "postgresql+asyncpg://pulse:pulse@localhost:5433/postgres"
-TEST_DB_URL = "postgresql+asyncpg://pulse:pulse@localhost:5433/pulsetrack_test"
+ADMIN_DB_URL = "postgresql+psycopg://pulse:pulse@localhost:5433/postgres"
+TEST_DB_URL = "postgresql+psycopg://pulse:pulse@localhost:5433/pulsetrack_test"
 TEST_REDIS_URL = "redis://localhost:6379/1"
 
 
 async def _ensure_test_database() -> None:
     # Check existence first: CREATE DATABASE cannot run inside a transaction and
-    # asyncpg's "already exists" error arrives wrapped by SQLAlchemy, not catchable.
+    # psycopg's "already exists" error arrives wrapped by SQLAlchemy, not catchable.
     check_engine = create_async_engine(ADMIN_DB_URL)
     create_engine = create_async_engine(ADMIN_DB_URL, isolation_level="AUTOCOMMIT")
     try:
